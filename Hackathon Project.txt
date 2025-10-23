@@ -1,0 +1,123 @@
+🧭 Hackathon Project 
+📦 Overview
+
+You will find attached a set of files and documents required for the hackathon project. These include:
+
+Hackathon Document — the official description of the challenge, including rules, constraints, and evaluation metrics.
+
+API Reference (api_reference.md) — the complete documentation for the Robin Logistics Environment. This defines all environment functions available for querying scenario details, manipulating vehicles, and executing actions.
+
+Dashboard Files (run_dashboard.py, related assets) — used to visualize your solver’s behavior on public scenarios.
+⚠️ Do not modify the dashboard code or the structure of the solver() function in solver.py.
+
+Functions Documentation Excel File (functions_examples_documentation.xlsx) — includes examples of all callable functions, their inputs/outputs, and expected behavior.
+
+---------------------------------------------------------------------------
+
+🚚 Problem Context
+
+The hackathon centers on the Multi-Warehouse Vehicle Routing Problem (MWVRP) — a key logistics challenge requiring optimal routing of vehicles to fulfill orders distributed across multiple depots.
+
+The environment simulates real-world logistics constraints in Cairo using a massive directed road graph with 332,000+ nodes. Each warehouse has limited inventory, vehicles have capacity limits (weight and volume), and every order requires fulfilling multiple SKUs under cost, distance, and inventory constraints.
+
+Your solver must:
+
+Plan multi-pickup and multi-delivery routes across several warehouses.
+Respect all road and vehicle constraints.
+Maximize order fulfillment while minimizing total delivery cost.
+Handle dynamic and imperfect logistics conditions efficiently.
+
+---------------------------------------------------------------------------
+
+⚙️ Environment Summary
+| **Component**    | **Details**                                                              |
+| ---------------- | ------------------------------------------------------------------------ |
+| **Road Network** | Directed graph (332k nodes), Dijkstra-based pathfinding                  |
+| **Warehouses**   | Multiple depots with distinct inventories                                |
+| **Vehicles**     | Start/end at home warehouse, fixed and variable costs, limited capacity  |
+| **Orders**       | Multi-SKU, distributed geographically                                    |
+| **Constraints**  | Capacity, connectivity, route validity, inventory, one route per vehicle |
+| **Allowed**      | Multi-pickup, multi-vehicle per order, unloading to any warehouse        |
+| **Prohibited**   | Environment modification, caching, hardcoded (“string”) solutions        |
+
+---------------------------------------------------------------------------
+
+📊 Evaluation Criteria
+
+The scoring formula for each scenario is:
+
+Scenario Score=Your Scenario Cost + Benchmark Solver Cost × (100 − Your Fulfillment %)
+
+Lower = better
+
+Missing fulfillment is heavily penalized.
+Once fulfillment is high, cost efficiency determines ranking.
+Overall rank is based on cumulative performance across all scenarios.
+
+---------------------------------------------------------------------------
+
+💡 Project Idea
+
+We will design a Reinforcement Learning (RL)-based solver that learns optimal routing policies through exposure to diverse logistics scenarios.
+The RL agent will:
+
+Train on multiple parameter variations (e.g., different warehouse counts, order densities, and vehicle fleets).
+Learn dynamically by simulating step-by-step decision-making rather than solving each scenario statically.
+Use a centralized policy that controls all vehicles simultaneously for coordinated optimization.
+
+This approach ensures generalization to unseen (“hidden”) test scenarios, as required by the hackathon evaluation.
+
+---------------------------------------------------------------------------
+
+🧠 Training Logic
+
+We follow an episode–epoch structure:
+
+Each episode represents a complete scenario (all vehicles start at home warehouses and end when all return).
+Within each episode, multiple epochs perform policy updates using collected transitions.
+After each episode, the updated policy is applied to new randomized scenarios to improve generalization.
+
+At the end of training:
+
+The final policy is serialized (e.g., saved as weights or compact string) and loaded by solver.py during simulation.
+Running run_dashboard.py launches the dashboard that visualizes performance on the selected scenario.
+The hackathon system later tests the same solver on hidden datasets for ranking.
+
+---------------------------------------------------------------------------
+
+🧩 Reward Function Design
+
+Our reward function aligns directly with the hackathon’s scoring objectives:
+maximize fulfillment first, then minimize total cost (distance).
+
+At each step, the solver (agent) selects one action — such as assigning a vehicle to its next pickup or delivery.
+After executing the action, the environment provides the updated state and metrics such as distance traveled and packages delivered.
+
+Mathematical Formulation
+
+    reward_t = W_DELIVER*delivered_delta - ALPHA_DIST*distance_traveled + W_UTIL*avg_utilization - W_VIOLATION*num_violations
+​
+
+where:
+
+| Symbol         | Meaning                                                            |
+| -------------- | ------------------------------------------------------------------ |
+| ( \Delta F_t ) | Number of new packages delivered at step (t)                       |
+| ( \Delta D_t ) | Distance traveled by vehicles at step (t)                          |
+| ( U_t )        | Average vehicle utilization fraction (capacity used)               |
+| ( V_t )        | Number of constraint violations (invalid actions, overloads, etc.) |
+
+Terminal reward:
+
+   terminal_reward = (B_FULFILL * (total_delivered / total_packages)) - (P_UNFULFILLED * (total_packages - total_delivered))
+
+
+| Parameter                | Description                                 | Value     |
+| ------------------------ | ------------------------------------------- | --------- |
+| (w_F)                    | Reward per delivered package                | **200.0** |
+| (\alpha)                 | Distance penalty per unit                   | **1.0**   |
+| (w_U)                    | Utilization bonus                           | **0.1**   |
+| (w_V)                    | Penalty per violation                       | **500.0** |
+| (B_{\text{fulfill}})     | Terminal bonus (scaled by fulfillment rate) | **500.0** |
+| (P_{\text{unfulfilled}}) | Terminal penalty per undelivered package    | **200.0** |
+
