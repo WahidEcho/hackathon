@@ -155,7 +155,11 @@ def test_solution_validation(solution, env):
     """Test solution validation through environment."""
     try:
         print("  🔄 Running environment validation...")
-        is_valid, message = env.validate_solution_complete(solution)
+        validation_result = env.validate_solution_complete(solution)
+        if isinstance(validation_result, tuple) and len(validation_result) >= 2:
+            is_valid, message = validation_result[0], validation_result[1]
+        else:
+            is_valid, message = bool(validation_result), "Validation result format unknown"
         
         if is_valid:
             print("  ✅ Solution is VALID")

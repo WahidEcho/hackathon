@@ -93,7 +93,14 @@ def main() -> int:
         
         # Validate solution
         print("Validating solution...")
-        is_valid, message = env.validate_solution_complete(solution)
+        try:
+            validation_result = env.validate_solution_complete(solution)
+            if isinstance(validation_result, tuple) and len(validation_result) >= 2:
+                is_valid, message = validation_result[0], validation_result[1]
+            else:
+                is_valid, message = bool(validation_result), "Validation result format unknown"
+        except Exception as e:
+            is_valid, message = False, f"Validation error: {e}"
         
         if is_valid:
             print("✅ Solution is VALID")
